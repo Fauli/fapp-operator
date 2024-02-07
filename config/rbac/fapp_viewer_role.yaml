@@ -1,0 +1,27 @@
+# permissions for end users to view fapps.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: fapp-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: fauli-operator
+    app.kubernetes.io/part-of: fauli-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: fapp-viewer-role
+rules:
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fapps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fapps/status
+  verbs:
+  - get
