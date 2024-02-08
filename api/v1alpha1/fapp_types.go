@@ -28,20 +28,29 @@ type FappSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Fapp. Edit fapp_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// What image should be deployed
+	Image string `json:"image,omitempty"`
+
+	// How many instances to run
+	Instances int `json:"instances,omitempty"`
+
+	// Do you need an ingress?
+	IsExposed bool `json:"bool,omitempty"`
 }
 
 // FappStatus defines the observed state of Fapp
 type FappStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // Fapp is the Schema for the fapps API
+// +kubebuilder:subresource:status
 type Fapp struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
