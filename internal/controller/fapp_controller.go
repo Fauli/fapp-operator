@@ -370,10 +370,15 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
+	r.Recorder.Event(fapp, "Info", "Created",
+		fmt.Sprintf("The sloth has created %s in namespace %s",
+			fapp.Name,
+			fapp.Namespace))
+
 	return ctrl.Result{}, nil
 }
 
-func (r *FappReconciler) doFinalizerOperationsForFapp(cr *fauliv1alpha1.Fapp) {
+func (r *FappReconciler) doFinalizerOperationsForFapp(fapp *fauliv1alpha1.Fapp) {
 	// TODO(user): Add the cleanup steps that the operator
 	// needs to do before the CR can be deleted. Examples
 	// of finalizers include performing backups and deleting
@@ -387,10 +392,10 @@ func (r *FappReconciler) doFinalizerOperationsForFapp(cr *fauliv1alpha1.Fapp) {
 
 	// The following implementation will raise an event
 	// TODO: Franz, somehow the event ends up in a nil pointer exception
-	// r.Recorder.Event(cr, "Warning", "Deleting",
-	// 	fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
-	// 		cr.Name,
-	// 		cr.Namespace))
+	r.Recorder.Event(fapp, "Warning", "Deleting",
+		fmt.Sprintf("The sloth has deleted %s in namespace %s",
+			fapp.Name,
+			fapp.Namespace))
 }
 
 func (r *FappReconciler) deploymentForFapp(fapp *fauliv1alpha1.Fapp) (*appsv1.Deployment, error) {
