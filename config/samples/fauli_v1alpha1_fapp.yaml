@@ -9,5 +9,10 @@ metadata:
     app.kubernetes.io/created-by: fauli-operator
   name: fapp-sample
 spec:
-  foo: bar
-  # TODO(user): Add fields here
+  size: 1
+  image: gcr.io/google-samples/hello-app:1.0
+  port: 8080
+  isExposed: true
+
+
+  # curl --resolve "fapp.sbebe.ch:8080:$( minikube ip )" -i http://fapp.sbebe.ch

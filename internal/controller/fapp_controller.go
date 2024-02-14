@@ -23,11 +23,13 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -184,9 +186,10 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
+	//////// Deployment ////////
 	// Check if the deployment already exists, if not create a new one
-	found := &appsv1.Deployment{}
-	err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, found)
+	foundDepl := &appsv1.Deployment{}
+	err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundDepl)
 
 	if err != nil && apierrors.IsNotFound(err) {
 		log.Info("Will now create a deployment")
@@ -231,23 +234,129 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	// Ensure the deployment size is the same as the spec
 	size := fapp.Spec.Size
-	if *found.Spec.Replicas != size {
-		found.Spec.Replicas = &size
-		err = r.Update(ctx, found)
+	if *foundDepl.Spec.Replicas != size {
+		foundDepl.Spec.Replicas = &size
+		err = r.Update(ctx, foundDepl)
 		if err != nil {
-			log.Error(err, "Failed to update Deployment replicas", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+			log.Error(err, "Failed to update Deployment replicas", "Deployment.Namespace", foundDepl.Namespace, "Deployment.Name", foundDepl.Name)
 			return ctrl.Result{}, err
 		}
 	}
 
 	// Ensure the deployment image is the same as the spec
 	image := fapp.Spec.Image
-	if found.Spec.Template.Spec.Containers[0].Image != image {
-		found.Spec.Template.Spec.Containers[0].Image = image
-		err = r.Update(ctx, found)
+	if foundDepl.Spec.Template.Spec.Containers[0].Image != image {
+		foundDepl.Spec.Template.Spec.Containers[0].Image = image
+		err = r.Update(ctx, foundDepl)
 		if err != nil {
-			log.Error(err, "Failed to update Deployment image", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+			log.Error(err, "Failed to update Deployment image", "Deployment.Namespace", foundDepl.Namespace, "Deployment.Name", foundDepl.Name)
 			return ctrl.Result{}, err
+		}
+	}
+
+	//////// Service ////////
+	// Check if the service already exists, if not create a new one
+	foundService := &corev1.Service{}
+	err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundService)
+
+	if err != nil && apierrors.IsNotFound(err) {
+		log.Info("Will now create a service")
+		// Define a new service
+		svc, err := r.serviceForFapp(fapp)
+		if err != nil {
+			log.Error(err, "Failed to define new Service resource for fapp")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", fapp.Name, err)})
+
+			if err := r.Status().Update(ctx, fapp); err != nil {
+				log.Error(err, "Failed to update fapp status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		log.Info("Creating a new Deployment",
+			"Deployment.Namespace", svc.Namespace, "Deployment.Name", svc.Name)
+		if err = r.Create(ctx, svc); err != nil {
+			log.Error(err, "Failed to create new Deployment",
+				"Deployment.Namespace", svc.Namespace, "Deployment.Name", svc.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Service created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Service")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
+
+	//////// Ingress ////////
+	// Check if the ingress already exists, if not create a new one, but only if isExposed is true
+	if fapp.Spec.IsExposed {
+		foundIngress := &networkingv1.Ingress{}
+		err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundIngress)
+
+		if err != nil && apierrors.IsNotFound(err) {
+			log.Info("Will now create an ingress")
+			// Define a new service
+			ingress, err := r.ingressForFapp(fapp)
+			if err != nil {
+				log.Error(err, "Failed to define new Service resource for fapp")
+
+				// The following implementation will update the status
+				meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
+					Status: metav1.ConditionFalse, Reason: "Reconciling",
+					Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", fapp.Name, err)})
+
+				if err := r.Status().Update(ctx, fapp); err != nil {
+					log.Error(err, "Failed to update fapp status")
+					return ctrl.Result{}, err
+				}
+
+				return ctrl.Result{}, err
+			}
+
+			log.Info("Creating a new Deployment",
+				"Deployment.Namespace", ingress.Namespace, "Deployment.Name", ingress.Name)
+			if err = r.Create(ctx, ingress); err != nil {
+				log.Error(err, "Failed to create new Deployment",
+					"Deployment.Namespace", ingress.Namespace, "Deployment.Name", ingress.Name)
+				return ctrl.Result{}, err
+			}
+
+			// Service created successfully
+			// We will requeue the reconciliation so that we can ensure the state
+			// and move forward for the next operations
+			return ctrl.Result{RequeueAfter: time.Minute}, nil
+		} else if err != nil {
+			log.Error(err, "Failed to get Service")
+			// Let's return the error for the reconciliation be re-trigged again
+			return ctrl.Result{}, err
+		}
+	} else {
+		// If the ingress is not exposed, we should check if it exists and delete it
+		foundIngress := &networkingv1.Ingress{}
+		err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundIngress)
+
+		if err != nil && apierrors.IsNotFound(err) {
+			log.Info("Ingress not found, nothing to do")
+		} else if err != nil {
+			log.Error(err, "Failed to get Ingress")
+			return ctrl.Result{}, err
+		} else {
+			log.Info("Deleting Ingress")
+			err = r.Delete(ctx, foundIngress)
+			if err != nil {
+				log.Error(err, "Failed to delete Ingress")
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -277,10 +386,11 @@ func (r *FappReconciler) doFinalizerOperationsForFapp(cr *fauliv1alpha1.Fapp) {
 	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
 
 	// The following implementation will raise an event
-	r.Recorder.Event(cr, "Warning", "Deleting",
-		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
-			cr.Name,
-			cr.Namespace))
+	// TODO: Franz, somehow the event ends up in a nil pointer exception
+	// r.Recorder.Event(cr, "Warning", "Deleting",
+	// 	fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
+	// 		cr.Name,
+	// 		cr.Namespace))
 }
 
 func (r *FappReconciler) deploymentForFapp(fapp *fauliv1alpha1.Fapp) (*appsv1.Deployment, error) {
@@ -327,7 +437,7 @@ func (r *FappReconciler) deploymentForFapp(fapp *fauliv1alpha1.Fapp) (*appsv1.De
 								// },
 							},
 							Ports: []corev1.ContainerPort{{
-								ContainerPort: int32(fapp.Spec.Port),
+								ContainerPort: fapp.Spec.Port,
 								Name:          "fapp",
 							}},
 						},
@@ -347,10 +457,78 @@ func (r *FappReconciler) deploymentForFapp(fapp *fauliv1alpha1.Fapp) (*appsv1.De
 
 }
 
+func (r *FappReconciler) serviceForFapp(fapp *fauliv1alpha1.Fapp) (*corev1.Service, error) {
+	labels := labelsForFapp(fapp.Name)
+
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fapp.Name,
+			Namespace: fapp.Namespace,
+			Labels:    labels,
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: labels,
+			Ports: []corev1.ServicePort{{
+				Port:       fapp.Spec.Port,
+				TargetPort: intstr.FromInt(int(fapp.Spec.Port))}},
+		},
+	}
+
+	// Set the ownerRef for the Service
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(fapp, service, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return service, nil
+}
+
+func (r *FappReconciler) ingressForFapp(fapp *fauliv1alpha1.Fapp) (*networkingv1.Ingress, error) {
+	labels := labelsForFapp(fapp.Name)
+	ingress := &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fapp.Name,
+			Namespace: fapp.Namespace,
+			Labels:    labels,
+			Annotations: map[string]string{
+				"nginx.ingress.kubernetes.io/rewrite-target": "/",
+			},
+		},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				Host: "fapp.sbebe.ch",
+				IngressRuleValue: networkingv1.IngressRuleValue{
+					HTTP: &networkingv1.HTTPIngressRuleValue{
+						Paths: []networkingv1.HTTPIngressPath{{
+							Path: "/",
+							PathType: func() *networkingv1.PathType {
+								pt := networkingv1.PathTypePrefix
+								return &pt
+							}(),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: fapp.Name,
+									Port: networkingv1.ServiceBackendPort{
+										Number: fapp.Spec.Port,
+									},
+								},
+							},
+						}},
+					},
+				},
+			}},
+		},
+	}
+
+	return ingress, nil
+
+}
+
 func labelsForFapp(name string) map[string]string {
-	return map[string]string{"app.kubernetes.io/name": "Fapp",
-		"app.kubernetes.io/instance":   name,
-		"app.kubernetes.io/part-of":    "Fapp-Deployment",
+	return map[string]string{
+		"app.kubernetes.io/name":       name,
+		"app.kubernetes.io/managed-by": "Fauli-Operator",
+		"app.kubernetes.io/part-of":    "Fauli-Application",
 		"app.kubernetes.io/created-by": "controller-manager",
 	}
 }
@@ -360,5 +538,7 @@ func (r *FappReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&fauliv1alpha1.Fapp{}).
 		Owns(&appsv1.Deployment{}).
+		Owns(&corev1.Service{}).
+		Owns(&networkingv1.Ingress{}).
 		Complete(r)
 }

@@ -32,13 +32,13 @@ type FappSpec struct {
 	Image string `json:"image"`
 
 	// How many instances to run
-	Instances int `json:"instances,omitempty"`
+	Instances int32 `json:"instances,omitempty"`
 
 	// Do you need an ingress?
-	IsExposed bool `json:"bool,omitempty"`
+	IsExposed bool `json:"isExposed,omitempty"`
 
 	// What port should the ingress listen on?
-	Port int `json:"port,omitempty"`
+	Port int32 `json:"port,omitempty"`
 
 	// How many replicas should be running
 	Size int32 `json:"size,omitempty"`

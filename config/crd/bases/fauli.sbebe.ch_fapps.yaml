@@ -34,17 +34,19 @@ spec:
           spec:
             description: FappSpec defines the desired state of Fapp
             properties:
-              bool:
-                description: Do you need an ingress?
-                type: boolean
               image:
                 description: What image should be deployed
                 type: string
               instances:
                 description: How many instances to run
+                format: int32
                 type: integer
+              isExposed:
+                description: Do you need an ingress?
+                type: boolean
               port:
                 description: What port should the ingress listen on?
+                format: int32
                 type: integer
               size:
                 description: How many replicas should be running
