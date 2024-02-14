@@ -29,13 +29,19 @@ type FappSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// What image should be deployed
-	Image string `json:"image,omitempty"`
+	Image string `json:"image"`
 
 	// How many instances to run
 	Instances int `json:"instances,omitempty"`
 
 	// Do you need an ingress?
 	IsExposed bool `json:"bool,omitempty"`
+
+	// What port should the ingress listen on?
+	Port int `json:"port,omitempty"`
+
+	// How many replicas should be running
+	Size int32 `json:"size,omitempty"`
 }
 
 // FappStatus defines the observed state of Fapp
@@ -50,7 +56,6 @@ type FappStatus struct {
 //+kubebuilder:subresource:status
 
 // Fapp is the Schema for the fapps API
-// +kubebuilder:subresource:status
 type Fapp struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

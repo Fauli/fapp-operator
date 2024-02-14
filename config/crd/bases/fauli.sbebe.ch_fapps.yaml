@@ -43,6 +43,15 @@ spec:
               instances:
                 description: How many instances to run
                 type: integer
+              port:
+                description: What port should the ingress listen on?
+                type: integer
+              size:
+                description: How many replicas should be running
+                format: int32
+                type: integer
+            required:
+            - image
             type: object
           status:
             description: FappStatus defines the observed state of Fapp

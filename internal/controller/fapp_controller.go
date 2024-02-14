@@ -19,8 +19,10 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,6 +54,9 @@ const (
 //+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -93,13 +98,13 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 
-		// Let's re-fetch the memcached Custom Resource after update the status
+		// Let's re-fetch the fapp Custom Resource after update the status
 		// so that we have the latest state of the resource on the cluster and we will avoid
 		// raise the issue "the object has been modified, please apply
 		// your changes to the latest version and try again" which would re-trigger the reconciliation
 		// if we try to update it again in the following operations
 		if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
-			log.Error(err, "Failed to re-fetch memcached")
+			log.Error(err, "Failed to re-fetch fapp")
 			return ctrl.Result{}, err
 		}
 
@@ -121,32 +126,58 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	// Check if the Memcached instance is marked to be deleted, which is
+	// Check if the Fapp instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	isFappMarkedToBeDeleted := fapp.GetDeletionTimestamp() != nil
 	if isFappMarkedToBeDeleted {
 		if controllerutil.ContainsFinalizer(fapp, fappFinalizer) {
 			log.Info("DELETE THE FAPP!")
 
-			// HERE WE WOULD DO THE ACTUAL DELETION OF THE ITEMS!!!
+			log.Info("Performing Finalizer Operations for Fauli-App before delete CR")
 
+			// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
+			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeDegradedFapp,
+				Status: metav1.ConditionUnknown, Reason: "Finalizing",
+				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", fapp.Name)})
+
+			if err := r.Status().Update(ctx, fapp); err != nil {
+				log.Error(err, "Failed to update Fapp status")
+				return ctrl.Result{}, err
+			}
+
+			// Perform all operations required before remove the finalizer and allow
+			// the Kubernetes API to remove the custom resource.
+			r.doFinalizerOperationsForFapp(fapp)
+
+			// TODO(user): If you add operations to the doFinalizerOperationsForFapp method
+			// then you need to ensure that all worked fine before deleting and updating the Downgrade status
+			// otherwise, you should requeue here.
+
+			// Re-fetch the fapp Custom Resource before update the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raise the issue "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
+				log.Error(err, "Failed to re-fetch fapp")
+				return ctrl.Result{}, err
+			}
 			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeDegradedFapp,
 				Status: metav1.ConditionTrue, Reason: "Finalizing",
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", fapp.Name)})
 
 			if err := r.Status().Update(ctx, fapp); err != nil {
-				log.Error(err, "Failed to update Memcached status")
+				log.Error(err, "Failed to update fapp status")
 				return ctrl.Result{}, err
 			}
 
-			log.Info("Removing Finalizer for Memcached after successfully perform the operations")
+			log.Info("Removing Finalizer for fapp after successfully perform the operations")
 			if ok := controllerutil.RemoveFinalizer(fapp, fappFinalizer); !ok {
-				log.Error(err, "Failed to remove finalizer for Memcached")
+				log.Error(err, "Failed to remove finalizer for fapp")
 				return ctrl.Result{Requeue: true}, nil
 			}
 
 			if err := r.Update(ctx, fapp); err != nil {
-				log.Error(err, "Failed to remove finalizer for Memcached")
+				log.Error(err, "Failed to remove finalizer for fapp")
 				return ctrl.Result{}, err
 			}
 		}
@@ -158,18 +189,176 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, found)
 
 	if err != nil && apierrors.IsNotFound(err) {
-		log.Info("Would now create a deployment")
+		log.Info("Will now create a deployment")
 		// r.Recorder.Event(fapp, "Information", "Because_I_Can", fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
 		// 	fapp.Name,
 		// 	fapp.Namespace))
+		// Define a new deployment
+		dep, err := r.deploymentForFapp(fapp)
+		if err != nil {
+			log.Error(err, "Failed to define new Deployment resource for fapp")
+
+			// The following implementation will update the status
+			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
+				Status: metav1.ConditionFalse, Reason: "Reconciling",
+				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", fapp.Name, err)})
+
+			if err := r.Status().Update(ctx, fapp); err != nil {
+				log.Error(err, "Failed to update fapp status")
+				return ctrl.Result{}, err
+			}
+
+			return ctrl.Result{}, err
+		}
+
+		log.Info("Creating a new Deployment",
+			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		if err = r.Create(ctx, dep); err != nil {
+			log.Error(err, "Failed to create new Deployment",
+				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Deployment created successfully
+		// We will requeue the reconciliation so that we can ensure the state
+		// and move forward for the next operations
+		return ctrl.Result{RequeueAfter: time.Minute}, nil
+	} else if err != nil {
+		log.Error(err, "Failed to get Deployment")
+		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
+
+	// Ensure the deployment size is the same as the spec
+	size := fapp.Spec.Size
+	if *found.Spec.Replicas != size {
+		found.Spec.Replicas = &size
+		err = r.Update(ctx, found)
+		if err != nil {
+			log.Error(err, "Failed to update Deployment replicas", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Ensure the deployment image is the same as the spec
+	image := fapp.Spec.Image
+	if found.Spec.Template.Spec.Containers[0].Image != image {
+		found.Spec.Template.Spec.Containers[0].Image = image
+		err = r.Update(ctx, found)
+		if err != nil {
+			log.Error(err, "Failed to update Deployment image", "Deployment.Namespace", found.Namespace, "Deployment.Name", found.Name)
+			return ctrl.Result{}, err
+		}
+	}
+
+	// The following implementation will update the status
+	meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
+		Status: metav1.ConditionTrue, Reason: "Reconciling",
+		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", fapp.Name, size)})
+
+	if err := r.Status().Update(ctx, fapp); err != nil {
+		log.Error(err, "Failed to update fapp status")
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *FappReconciler) doFinalizerOperationsForFapp(cr *fauliv1alpha1.Fapp) {
+	// TODO(user): Add the cleanup steps that the operator
+	// needs to do before the CR can be deleted. Examples
+	// of finalizers include performing backups and deleting
+	// resources that are not owned by this CR, like a PVC.
+
+	// Note: It is not recommended to use finalizers with the purpose of delete resources which are
+	// created and managed in the reconciliation. These ones, such as the Deployment created on this reconcile,
+	// are defined as depended of the custom resource. See that we use the method ctrl.SetControllerReference.
+	// to set the ownerRef which means that the Deployment will be deleted by the Kubernetes API.
+	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
+
+	// The following implementation will raise an event
+	r.Recorder.Event(cr, "Warning", "Deleting",
+		fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
+			cr.Name,
+			cr.Namespace))
+}
+
+func (r *FappReconciler) deploymentForFapp(fapp *fauliv1alpha1.Fapp) (*appsv1.Deployment, error) {
+	labels := labelsForFapp(fapp.Name)
+	replicas := fapp.Spec.Size
+
+	// Get the Operand image
+	// Do not forget to add the error handling?
+	// image, err := fapp.Spec.Image
+	image := fapp.Spec.Image
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fapp.Name,
+			Namespace: fapp.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					SecurityContext: &corev1.PodSecurityContext{
+						SeccompProfile: &corev1.SeccompProfile{
+							Type: corev1.SeccompProfileTypeRuntimeDefault,
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:  "fapp",
+							Image: image,
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser:                &[]int64{1001}[0],
+								AllowPrivilegeEscalation: &[]bool{false}[0],
+								// TODO: Add the capabilities needed for the container??
+								// Capabilities: &corev1.Capabilities{
+								// 	Drop: []corev1.Capability{
+								// 		"ALL",
+								// 	},
+								// },
+							},
+							Ports: []corev1.ContainerPort{{
+								ContainerPort: int32(fapp.Spec.Port),
+								Name:          "fapp",
+							}},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Set the ownerRef for the Deployment
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(fapp, dep, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return dep, nil
+
+}
+
+func labelsForFapp(name string) map[string]string {
+	return map[string]string{"app.kubernetes.io/name": "Fapp",
+		"app.kubernetes.io/instance":   name,
+		"app.kubernetes.io/part-of":    "Fapp-Deployment",
+		"app.kubernetes.io/created-by": "controller-manager",
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *FappReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&fauliv1alpha1.Fapp{}).
+		Owns(&appsv1.Deployment{}).
 		Complete(r)
 }
