@@ -1,8 +1,12 @@
-# fauli-operator
-// TODO(user): Add simple overview of use/purpose
+# Slothperator
+![Slothperator](./.attachements/slothperator.webp)
+
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+Turn your kubernetes cluster into a simple yet usable PaaS Solution!
+
+Don't care about all the nitty gritty details and just want to run your app? Let the 🦥 do the work!
+
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
