@@ -193,9 +193,6 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	if err != nil && apierrors.IsNotFound(err) {
 		log.Info("Will now create a deployment")
-		// r.Recorder.Event(fapp, "Information", "Because_I_Can", fmt.Sprintf("Custom Resource %s is being deleted from the namespace %s",
-		// 	fapp.Name,
-		// 	fapp.Namespace))
 		// Define a new deployment
 		dep, err := r.deploymentForFapp(fapp)
 		if err != nil {
@@ -370,7 +367,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	r.Recorder.Event(fapp, "Info", "Created",
+	r.Recorder.Event(fapp, "Normal", "Created",
 		fmt.Sprintf("The sloth has created %s in namespace %s",
 			fapp.Name,
 			fapp.Namespace))
@@ -391,7 +388,6 @@ func (r *FappReconciler) doFinalizerOperationsForFapp(fapp *fauliv1alpha1.Fapp) 
 	// More info: https://kubernetes.io/docs/tasks/administer-cluster/use-cascading-deletion/
 
 	// The following implementation will raise an event
-	// TODO: Franz, somehow the event ends up in a nil pointer exception
 	r.Recorder.Event(fapp, "Warning", "Deleting",
 		fmt.Sprintf("The sloth has deleted %s in namespace %s",
 			fapp.Name,
