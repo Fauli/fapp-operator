@@ -92,6 +92,7 @@ func main() {
 	if err = (&controller.FappReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Sloth-Deployment"),
 		Recorder: mgr.GetEventRecorderFor("slothperator-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Fapp")
