@@ -101,7 +101,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	// Fetch the Fapp instance metadata for later use
+	// Set the Fapp instance metadata for later use
 	objectMeta := metav1.ObjectMeta{
 		Name:      fapp.Name,
 		Namespace: req.Namespace,
@@ -156,11 +156,13 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if controllerutil.ContainsFinalizer(fapp, fappFinalizer) {
 			log.Info("DELETE THE FAPP!")
 
-			log.Info("Performing Finalizer Operations for Fauli-App before delete CR")
+			log.Info("Performing Finalizer Operations for Sloth-App before delete.....")
 
 			// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
-			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeDegradedFapp,
-				Status: metav1.ConditionUnknown, Reason: "Finalizing",
+			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{
+				Type:    typeDegradedFapp,
+				Status:  metav1.ConditionUnknown,
+				Reason:  "Finalizing",
 				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", fapp.Name)})
 
 			if err := r.Status().Update(ctx, fapp); err != nil {
@@ -205,6 +207,15 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 		}
 		return ctrl.Result{}, nil
+	}
+
+	// Re-fetch the fapp Custom Resource before update the status
+	// so that we have the latest state of the resource on the cluster and we will avoid
+	// raise the issue "the object has been modified, please apply
+	// your changes to the latest version and try again" which would re-trigger the reconciliation
+	if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
+		log.Error(err, "Failed to re-fetch fapp")
+		return ctrl.Result{}, err
 	}
 
 	//////// Deployment ////////
