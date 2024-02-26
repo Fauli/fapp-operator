@@ -208,7 +208,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	//////// Deployment ////////
-	// create deployment
+	// create or update the deployment resource
 	dpl := &appsv1.Deployment{}
 	dpl.ObjectMeta = objectMeta
 	err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, dpl, fapp, func() error {
@@ -219,70 +219,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		log.Error(err, "Deployment handling failed")
 	}
-	// Check if the deployment already exists, if not create a new one
-
-	// foundDepl := &appsv1.Deployment{}
-	// err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundDepl)
-
-	// if err != nil && apierrors.IsNotFound(err) {
-	// 	log.Info("Will now create a deployment")
-	// 	// Define a new deployment
-	// 	dep, err := r.deploymentForFapp(fapp)
-	// 	if err != nil {
-	// 		log.Error(err, "Failed to define new Deployment resource for fapp")
-
-	// 		// The following implementation will update the status
-	// 		meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
-	// 			Status: metav1.ConditionFalse, Reason: "Reconciling",
-	// 			Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", fapp.Name, err)})
-
-	// 		if err := r.Status().Update(ctx, fapp); err != nil {
-	// 			log.Error(err, "Failed to update fapp status")
-	// 			return ctrl.Result{}, err
-	// 		}
-
-	// 		return ctrl.Result{}, err
-	// 	}
-
-	// 	log.Info("Creating a new Deployment",
-	// 		"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-	// 	if err = r.Create(ctx, dep); err != nil {
-	// 		log.Error(err, "Failed to create new Deployment",
-	// 			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-	// 		return ctrl.Result{}, err
-	// 	}
-
-	// 	// Deployment created successfully
-	// 	// We will requeue the reconciliation so that we can ensure the state
-	// 	// and move forward for the next operations
-	// 	return ctrl.Result{RequeueAfter: time.Minute}, nil
-	// } else if err != nil {
-	// 	log.Error(err, "Failed to get Deployment")
-	// 	// Let's return the error for the reconciliation be re-trigged again
-	// 	return ctrl.Result{}, err
-	// }
-
-	// // Ensure the deployment size is the same as the spec
-	// size := fapp.Spec.Size
-	// if *foundDepl.Spec.Replicas != size {
-	// 	foundDepl.Spec.Replicas = &size
-	// 	err = r.Update(ctx, foundDepl)
-	// 	if err != nil {
-	// 		log.Error(err, "Failed to update Deployment replicas", "Deployment.Namespace", foundDepl.Namespace, "Deployment.Name", foundDepl.Name)
-	// 		return ctrl.Result{}, err
-	// 	}
-	// }
-
-	// // Ensure the deployment image is the same as the spec
-	// image := fapp.Spec.Image
-	// if foundDepl.Spec.Template.Spec.Containers[0].Image != image {
-	// 	foundDepl.Spec.Template.Spec.Containers[0].Image = image
-	// 	err = r.Update(ctx, foundDepl)
-	// 	if err != nil {
-	// 		log.Error(err, "Failed to update Deployment image", "Deployment.Namespace", foundDepl.Namespace, "Deployment.Name", foundDepl.Name)
-	// 		return ctrl.Result{}, err
-	// 	}
-	// }
+	// TODO: Handle the status of the deployment appropiately
 
 	//////// Service ////////
 	// Check if the service already exists, if not create a new one
@@ -426,70 +363,6 @@ func (r *FappReconciler) doFinalizerOperationsForFapp(fapp *fauliv1alpha1.Fapp) 
 			fapp.Name,
 			fapp.Namespace))
 }
-
-// func (r *FappReconciler) deploymentForFapp(fapp *fauliv1alpha1.Fapp) (*appsv1.Deployment, error) {
-// 	labels := labelsForFapp(fapp.Name)
-// 	replicas := fapp.Spec.Size
-
-// 	// Get the Operand image
-// 	// Do not forget to add the error handling?
-// 	// image, err := fapp.Spec.Image
-// 	image := fapp.Spec.Image
-
-// 	dep := &appsv1.Deployment{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      fapp.Name,
-// 			Namespace: fapp.Namespace,
-// 		},
-// 		Spec: appsv1.DeploymentSpec{
-// 			Replicas: &replicas,
-// 			Selector: &metav1.LabelSelector{
-// 				MatchLabels: labels,
-// 			},
-// 			Template: corev1.PodTemplateSpec{
-// 				ObjectMeta: metav1.ObjectMeta{
-// 					Labels: labels,
-// 				},
-// 				Spec: corev1.PodSpec{
-// 					SecurityContext: &corev1.PodSecurityContext{
-// 						SeccompProfile: &corev1.SeccompProfile{
-// 							Type: corev1.SeccompProfileTypeRuntimeDefault,
-// 						},
-// 					},
-// 					Containers: []corev1.Container{
-// 						{
-// 							Name:  "fapp",
-// 							Image: image,
-// 							SecurityContext: &corev1.SecurityContext{
-// 								RunAsUser:                &[]int64{1001}[0],
-// 								AllowPrivilegeEscalation: &[]bool{false}[0],
-// 								// TODO: Add the capabilities needed for the container??
-// 								// Capabilities: &corev1.Capabilities{
-// 								// 	Drop: []corev1.Capability{
-// 								// 		"ALL",
-// 								// 	},
-// 								// },
-// 							},
-// 							Ports: []corev1.ContainerPort{{
-// 								ContainerPort: fapp.Spec.Port,
-// 								Name:          "fapp",
-// 							}},
-// 						},
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-
-// 	// Set the ownerRef for the Deployment
-// 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
-// 	if err := ctrl.SetControllerReference(fapp, dep, r.Scheme); err != nil {
-// 		return nil, err
-// 	}
-
-// 	return dep, nil
-
-// }
 
 func (r *FappReconciler) serviceForFapp(fapp *fauliv1alpha1.Fapp) (*corev1.Service, error) {
 	labels := labelsForFapp(fapp.Name)

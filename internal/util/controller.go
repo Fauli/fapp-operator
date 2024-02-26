@@ -92,19 +92,12 @@ func mutate(f MutateFn, key client.ObjectKey, obj client.Object) error {
 
 func DeploymentForFapp(deploy *appsv1.Deployment, fapp *fauliv1alpha1.Fapp) {
 
-	deploy.ObjectMeta.Labels = labelsForFapp(fapp.Name)
-	// deploy.Spec.Selector = &metav1.LabelSelector{
-	// 	MatchLabels: map[string]string{
-	// 		"app.kubernetes.io/instance": fapp.Name,
-	// 		"app.kubernetes.io/name":     fapp.Name,
-	// 		"name":                       fapp.Name,
-	// 	},
-	// }
 	labels := labelsForFapp(fapp.Name)
 	// print all labels
 	for key, value := range labels {
 		fmt.Println("Key:", key, "Value:", value)
 	}
+	deploy.ObjectMeta.Labels = labels
 	deploy.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: labels,
 	}
