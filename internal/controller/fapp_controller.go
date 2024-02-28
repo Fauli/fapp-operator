@@ -251,7 +251,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		log.Error(err, "Service handling failed")
 	}
-	// TODO: Handle the status of the deployment appropiately
+	// TODO: Handle the status of the service appropiately
 
 	// Let's re-fetch the fapp Custom Resource after update the status
 	// so that we have the latest state of the resource on the cluster and we will avoid
@@ -274,6 +274,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if err != nil {
 			log.Error(err, "Ingress handling failed")
 		}
+		// TODO: Handle the status of the deployment appropiately
 	} else {
 		// If the ingress is not exposed, we should check if it exists and delete it
 		foundIngress := &networkingv1.Ingress{}
