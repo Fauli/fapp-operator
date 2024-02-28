@@ -108,11 +108,14 @@ func DeploymentForFapp(deploy *appsv1.Deployment, fapp *fauliv1alpha1.Fapp) {
 func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp, ns *corev1.Namespace) error {
 
 	var appContainer corev1.Container
+	pts.ObjectMeta.Labels = labelsForFapp(fapp.Name)
+
 	if len(pts.Spec.Containers) == 0 {
 		appContainer = corev1.Container{}
 	} else {
 		appContainer = pts.Spec.Containers[0]
 	}
+
 	appContainer.Name = fmt.Sprintf("%s-%s", fapp.Name, "container")
 	appContainer.Image = fapp.Spec.Image
 	appContainer.ImagePullPolicy = "Always"

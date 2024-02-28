@@ -48,10 +48,6 @@ spec:
                 description: What port should the ingress listen on?
                 format: int32
                 type: integer
-              size:
-                description: How many replicas should be running
-                format: int32
-                type: integer
             required:
             - image
             type: object

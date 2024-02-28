@@ -75,7 +75,7 @@ const (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("GOT SOMETHING")
+	// log.Info("GOT SOMETHING")
 
 	// Fetch the Fapp instance
 	fapp := &fauliv1alpha1.Fapp{}
@@ -137,6 +137,15 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// occurs before the custom resource to be deleted.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
 	if !controllerutil.ContainsFinalizer(fapp, fappFinalizer) {
+		// Let's re-fetch the fapp Custom Resource after update the status
+		// so that we have the latest state of the resource on the cluster and we will avoid
+		// raise the issue "the object has been modified, please apply
+		// your changes to the latest version and try again" which would re-trigger the reconciliation
+		// if we try to update it again in the following operations
+		if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
+			log.Error(err, "Failed to re-fetch fapp")
+			return ctrl.Result{}, err
+		}
 		log.Info("Adding Finalizer for our Fapp")
 		if ok := controllerutil.AddFinalizer(fapp, fappFinalizer); !ok {
 			log.Error(err, "Failed to add finalizer into the custom resource")
@@ -186,7 +195,8 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				log.Error(err, "Failed to re-fetch fapp")
 				return ctrl.Result{}, err
 			}
-			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeDegradedFapp,
+			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{
+				Type:   typeDegradedFapp,
 				Status: metav1.ConditionTrue, Reason: "Finalizing",
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", fapp.Name)})
 
@@ -209,15 +219,6 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	// Re-fetch the fapp Custom Resource before update the status
-	// so that we have the latest state of the resource on the cluster and we will avoid
-	// raise the issue "the object has been modified, please apply
-	// your changes to the latest version and try again" which would re-trigger the reconciliation
-	if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
-		log.Error(err, "Failed to re-fetch fapp")
-		return ctrl.Result{}, err
-	}
-
 	//////// Deployment ////////
 	// create or update the deployment resource
 	dpl := &appsv1.Deployment{}
@@ -231,6 +232,16 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		log.Error(err, "Deployment handling failed")
 	}
 	// TODO: Handle the status of the deployment appropiately
+
+	// Let's re-fetch the fapp Custom Resource after update the status
+	// so that we have the latest state of the resource on the cluster and we will avoid
+	// raise the issue "the object has been modified, please apply
+	// your changes to the latest version and try again" which would re-trigger the reconciliation
+	// if we try to update it again in the following operations
+	if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
+		log.Error(err, "Failed to re-fetch fapp")
+		return ctrl.Result{}, err
+	}
 
 	//////// Service ////////
 	// Check if the service already exists, if not create a new one
@@ -272,6 +283,16 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	} else if err != nil {
 		log.Error(err, "Failed to get Service")
 		// Let's return the error for the reconciliation be re-trigged again
+		return ctrl.Result{}, err
+	}
+
+	// Let's re-fetch the fapp Custom Resource after update the status
+	// so that we have the latest state of the resource on the cluster and we will avoid
+	// raise the issue "the object has been modified, please apply
+	// your changes to the latest version and try again" which would re-trigger the reconciliation
+	// if we try to update it again in the following operations
+	if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
+		log.Error(err, "Failed to re-fetch fapp")
 		return ctrl.Result{}, err
 	}
 
@@ -341,7 +362,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// The following implementation will update the status
 	meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
 		Status: metav1.ConditionTrue, Reason: "Reconciling",
-		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", fapp.Name, fapp.Spec.Size)})
+		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", fapp.Name, fapp.Spec.Instances)})
 
 	if err := r.Status().Update(ctx, fapp); err != nil {
 		log.Error(err, "Failed to update fapp status")
