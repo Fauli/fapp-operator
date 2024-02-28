@@ -23,7 +23,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,7 +93,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Name: req.Namespace,
 	}
 	if err := r.Client.Get(ctx, key, ns); err != nil {
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
 	}
