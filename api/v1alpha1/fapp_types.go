@@ -39,9 +39,6 @@ type FappSpec struct {
 
 	// What port should the ingress listen on?
 	Port int32 `json:"port,omitempty"`
-
-	// How many replicas should be running
-	Size int32 `json:"size,omitempty"`
 }
 
 // FappStatus defines the observed state of Fapp
