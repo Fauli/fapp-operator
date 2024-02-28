@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: fauli-operator
   name: fapp-sample
 spec:
-  instances: 1
+  replicas: 1
   image: gcr.io/google-samples/hello-app:1.0
   port: 8080
   isExposed: true

@@ -7,7 +7,10 @@ import (
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -102,10 +105,10 @@ func DeploymentForFapp(deploy *appsv1.Deployment, fapp *fauliv1alpha1.Fapp) {
 		MatchLabels: labels,
 	}
 
-	deploy.Spec.Replicas = &fapp.Spec.Instances
+	deploy.Spec.Replicas = &fapp.Spec.Replicas
 }
 
-func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp, ns *corev1.Namespace) error {
+func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp) error {
 
 	var appContainer corev1.Container
 	pts.ObjectMeta.Labels = labelsForFapp(fapp.Name)
@@ -139,6 +142,53 @@ func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp, ns *c
 	pts.Spec.Containers = []corev1.Container{appContainer}
 	return nil
 
+}
+
+func ServiceForFapp(svc *corev1.Service, fapp *fauliv1alpha1.Fapp) error {
+	labels := labelsForFapp(fapp.Name)
+	svc.ObjectMeta.Labels = labels
+	svc.Spec.Selector = labels
+	svc.Spec.Ports = []corev1.ServicePort{
+		{
+			Protocol:   "TCP",
+			Port:       fapp.Spec.Port,
+			TargetPort: intstr.FromInt(int(fapp.Spec.Port)),
+		},
+	}
+
+	return nil
+}
+
+func IngressForFapp(ing *networkingv1.Ingress, fapp *fauliv1alpha1.Fapp) error {
+	labels := labelsForFapp(fapp.Name)
+	ing.ObjectMeta.Labels = labels
+	ing.Spec.Rules = []networkingv1.IngressRule{
+		{
+			Host: "test.com",
+			IngressRuleValue: networkingv1.IngressRuleValue{
+				HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{
+						{
+							Path: "/",
+							PathType: func() *networkingv1.PathType {
+								pt := networkingv1.PathTypePrefix
+								return &pt
+							}(),
+							Backend: networkingv1.IngressBackend{
+								Service: &networkingv1.IngressServiceBackend{
+									Name: fapp.Name,
+									Port: networkingv1.ServiceBackendPort{
+										Number: fapp.Spec.Port,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return nil
 }
 
 func labelsForFapp(name string) map[string]string {

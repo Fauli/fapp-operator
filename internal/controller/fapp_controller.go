@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +29,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -226,7 +224,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, dpl, fapp, func() error {
 
 		util.DeploymentForFapp(dpl, fapp)
-		return util.PodSpecForFapp(&dpl.Spec.Template, fapp, ns)
+		return util.PodSpecForFapp(&dpl.Spec.Template, fapp)
 	})
 	if err != nil {
 		log.Error(err, "Deployment handling failed")
@@ -244,47 +242,16 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	//////// Service ////////
-	// Check if the service already exists, if not create a new one
-	foundService := &corev1.Service{}
-	err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundService)
-
-	if err != nil && apierrors.IsNotFound(err) {
-		log.Info("Will now create a service")
-		// Define a new service
-		svc, err := r.serviceForFapp(fapp)
-		if err != nil {
-			log.Error(err, "Failed to define new Service resource for fapp")
-
-			// The following implementation will update the status
-			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
-				Status: metav1.ConditionFalse, Reason: "Reconciling",
-				Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", fapp.Name, err)})
-
-			if err := r.Status().Update(ctx, fapp); err != nil {
-				log.Error(err, "Failed to update fapp status")
-				return ctrl.Result{}, err
-			}
-
-			return ctrl.Result{}, err
-		}
-
-		log.Info("Creating a new Deployment",
-			"Deployment.Namespace", svc.Namespace, "Deployment.Name", svc.Name)
-		if err = r.Create(ctx, svc); err != nil {
-			log.Error(err, "Failed to create new Deployment",
-				"Deployment.Namespace", svc.Namespace, "Deployment.Name", svc.Name)
-			return ctrl.Result{}, err
-		}
-
-		// Service created successfully
-		// We will requeue the reconciliation so that we can ensure the state
-		// and move forward for the next operations
-		return ctrl.Result{RequeueAfter: time.Minute}, nil
-	} else if err != nil {
-		log.Error(err, "Failed to get Service")
-		// Let's return the error for the reconciliation be re-trigged again
-		return ctrl.Result{}, err
+	// create or update the service resource
+	svc := &corev1.Service{}
+	svc.ObjectMeta = objectMeta
+	err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, dpl, fapp, func() error {
+		return util.ServiceForFapp(svc, fapp)
+	})
+	if err != nil {
+		log.Error(err, "Service handling failed")
 	}
+	// TODO: Handle the status of the deployment appropiately
 
 	// Let's re-fetch the fapp Custom Resource after update the status
 	// so that we have the latest state of the resource on the cluster and we will avoid
@@ -297,47 +264,15 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	//////// Ingress ////////
-	// Check if the ingress already exists, if not create a new one, but only if isExposed is true
+	// create or update the deployment resource
 	if fapp.Spec.IsExposed {
-		foundIngress := &networkingv1.Ingress{}
-		err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundIngress)
-
-		if err != nil && apierrors.IsNotFound(err) {
-			log.Info("Will now create an ingress")
-			// Define a new service
-			ingress, err := r.ingressForFapp(fapp)
-			if err != nil {
-				log.Error(err, "Failed to define new Service resource for fapp")
-
-				// The following implementation will update the status
-				meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
-					Status: metav1.ConditionFalse, Reason: "Reconciling",
-					Message: fmt.Sprintf("Failed to create Deployment for the custom resource (%s): (%s)", fapp.Name, err)})
-
-				if err := r.Status().Update(ctx, fapp); err != nil {
-					log.Error(err, "Failed to update fapp status")
-					return ctrl.Result{}, err
-				}
-
-				return ctrl.Result{}, err
-			}
-
-			log.Info("Creating a new Deployment",
-				"Deployment.Namespace", ingress.Namespace, "Deployment.Name", ingress.Name)
-			if err = r.Create(ctx, ingress); err != nil {
-				log.Error(err, "Failed to create new Deployment",
-					"Deployment.Namespace", ingress.Namespace, "Deployment.Name", ingress.Name)
-				return ctrl.Result{}, err
-			}
-
-			// Service created successfully
-			// We will requeue the reconciliation so that we can ensure the state
-			// and move forward for the next operations
-			return ctrl.Result{RequeueAfter: time.Minute}, nil
-		} else if err != nil {
-			log.Error(err, "Failed to get Service")
-			// Let's return the error for the reconciliation be re-trigged again
-			return ctrl.Result{}, err
+		ing := &networkingv1.Ingress{}
+		ing.ObjectMeta = objectMeta
+		err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, dpl, fapp, func() error {
+			return util.IngressForFapp(ing, fapp)
+		})
+		if err != nil {
+			log.Error(err, "Ingress handling failed")
 		}
 	} else {
 		// If the ingress is not exposed, we should check if it exists and delete it
@@ -360,9 +295,11 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	// The following implementation will update the status
-	meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{Type: typeAvailableFapp,
-		Status: metav1.ConditionTrue, Reason: "Reconciling",
-		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", fapp.Name, fapp.Spec.Instances)})
+	meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{
+		Type:    typeAvailableFapp,
+		Status:  metav1.ConditionTrue,
+		Reason:  "Reconciling",
+		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", fapp.Name, fapp.Spec.Replicas)})
 
 	if err := r.Status().Update(ctx, fapp); err != nil {
 		log.Error(err, "Failed to update fapp status")
@@ -394,82 +331,6 @@ func (r *FappReconciler) doFinalizerOperationsForFapp(fapp *fauliv1alpha1.Fapp) 
 		fmt.Sprintf("The sloth has deleted %s in namespace %s",
 			fapp.Name,
 			fapp.Namespace))
-}
-
-func (r *FappReconciler) serviceForFapp(fapp *fauliv1alpha1.Fapp) (*corev1.Service, error) {
-	labels := labelsForFapp(fapp.Name)
-
-	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fapp.Name,
-			Namespace: fapp.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: labels,
-			Ports: []corev1.ServicePort{{
-				Port:       fapp.Spec.Port,
-				TargetPort: intstr.FromInt(int(fapp.Spec.Port))}},
-		},
-	}
-
-	// Set the ownerRef for the Service
-	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
-	if err := ctrl.SetControllerReference(fapp, service, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	return service, nil
-}
-
-func (r *FappReconciler) ingressForFapp(fapp *fauliv1alpha1.Fapp) (*networkingv1.Ingress, error) {
-	labels := labelsForFapp(fapp.Name)
-	ingress := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fapp.Name,
-			Namespace: fapp.Namespace,
-			Labels:    labels,
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/rewrite-target": "/",
-			},
-		},
-		Spec: networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{{
-				Host: "fapp.sbebe.ch",
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path: "/",
-							PathType: func() *networkingv1.PathType {
-								pt := networkingv1.PathTypePrefix
-								return &pt
-							}(),
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: fapp.Name,
-									Port: networkingv1.ServiceBackendPort{
-										Number: fapp.Spec.Port,
-									},
-								},
-							},
-						}},
-					},
-				},
-			}},
-		},
-	}
-
-	return ingress, nil
-
-}
-
-func labelsForFapp(name string) map[string]string {
-	return map[string]string{
-		"app.kubernetes.io/name":       name,
-		"app.kubernetes.io/managed-by": "Fauli-Operator",
-		"app.kubernetes.io/part-of":    "Fauli-Application",
-		"app.kubernetes.io/created-by": "controller-manager",
-	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

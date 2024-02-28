@@ -31,8 +31,8 @@ type FappSpec struct {
 	// What image should be deployed
 	Image string `json:"image"`
 
-	// How many instances to run
-	Instances int32 `json:"instances,omitempty"`
+	// How many replicas to run
+	Replicas int32 `json:"replicas,omitempty"`
 
 	// Do you need an ingress?
 	IsExposed bool `json:"isExposed,omitempty"`
