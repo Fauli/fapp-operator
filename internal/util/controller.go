@@ -8,6 +8,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -96,10 +97,10 @@ func mutate(f MutateFn, key client.ObjectKey, obj client.Object) error {
 func DeploymentForFapp(deploy *appsv1.Deployment, fapp *fauliv1alpha1.Fapp) {
 
 	labels := labelsForFapp(fapp.Name)
-	// print all labels
-	for key, value := range labels {
-		fmt.Println("Key:", key, "Value:", value)
-	}
+	// // print all labels
+	// for key, value := range labels {
+	// 	fmt.Println("Key:", key, "Value:", value)
+	// }
 	deploy.ObjectMeta.Labels = labels
 	deploy.Spec.Selector = &metav1.LabelSelector{
 		MatchLabels: labels,
@@ -164,7 +165,7 @@ func IngressForFapp(ing *networkingv1.Ingress, fapp *fauliv1alpha1.Fapp) error {
 	ing.ObjectMeta.Labels = labels
 	ing.Spec.Rules = []networkingv1.IngressRule{
 		{
-			Host: "test.com",
+			Host: getHostname(fapp),
 			IngressRuleValue: networkingv1.IngressRuleValue{
 				HTTP: &networkingv1.HTTPIngressRuleValue{
 					Paths: []networkingv1.HTTPIngressPath{
@@ -189,6 +190,32 @@ func IngressForFapp(ing *networkingv1.Ingress, fapp *fauliv1alpha1.Fapp) error {
 		},
 	}
 	return nil
+}
+
+func getHostname(fapp *fauliv1alpha1.Fapp) string {
+	return fmt.Sprintf("%s.%s", fapp.Name, "sbebe.ch")
+}
+
+func PodDisruptionBudgetForFapp(pdb *policyv1.PodDisruptionBudget, fapp *fauliv1alpha1.Fapp) error {
+
+	labels := labelsForFapp(fapp.Name)
+
+	pdb.ObjectMeta.Labels = labels
+
+	pdb.Spec.MaxUnavailable = &intstr.IntOrString{
+		Type:   intstr.Int,
+		IntVal: getMinHealthyReplicas(fapp.Spec.Replicas),
+	}
+
+	pdb.Spec.Selector = &metav1.LabelSelector{
+		MatchLabels: labels,
+	}
+
+	return nil
+}
+
+func getMinHealthyReplicas(replicas int32) int32 {
+	return replicas / 2
 }
 
 func labelsForFapp(name string) map[string]string {

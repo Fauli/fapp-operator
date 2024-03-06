@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -244,7 +245,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// create or update the service resource
 	svc := &corev1.Service{}
 	svc.ObjectMeta = objectMeta
-	err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, dpl, fapp, func() error {
+	err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, svc, fapp, func() error {
 		return util.ServiceForFapp(svc, fapp)
 	})
 	if err != nil {
@@ -263,17 +264,17 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	//////// Ingress ////////
-	// create or update the deployment resource
+	// create or update the ingress resource
 	if fapp.Spec.IsExposed {
 		ing := &networkingv1.Ingress{}
 		ing.ObjectMeta = objectMeta
-		err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, dpl, fapp, func() error {
+		err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, ing, fapp, func() error {
 			return util.IngressForFapp(ing, fapp)
 		})
 		if err != nil {
 			log.Error(err, "Ingress handling failed")
 		}
-		// TODO: Handle the status of the deployment appropiately
+		// TODO: Handle the status of the ingress appropiately
 	} else {
 		// If the ingress is not exposed, we should check if it exists and delete it
 		foundIngress := &networkingv1.Ingress{}
@@ -289,6 +290,40 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			err = r.Delete(ctx, foundIngress)
 			if err != nil {
 				log.Error(err, "Failed to delete Ingress")
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	//////// Pod Disruption Budget ////////
+	// create or update the pdb resource
+	if fapp.Spec.Replicas > 1 {
+		pdb := &policyv1.PodDisruptionBudget{}
+		pdb.ObjectMeta = objectMeta
+		err = util.CreateOrUpdate(ctx, r.Client, r.Scheme, r.Log, pdb, fapp, func() error {
+			return util.PodDisruptionBudgetForFapp(pdb, fapp)
+		})
+		if err != nil {
+			log.Error(err, "PDB handling failed")
+		}
+		// TODO: Handle the status of the pdb appropiately
+	} else {
+		// If the pdb is not needed, we should check if it exists and delete it
+		// a PDB is only needed if the replicas are greater than 1
+		// otherwise it can cause issues when trying upgrade nodes
+		foundPDB := &policyv1.PodDisruptionBudget{}
+		err = r.Get(ctx, types.NamespacedName{Name: fapp.Name, Namespace: fapp.Namespace}, foundPDB)
+
+		if err != nil && apierrors.IsNotFound(err) {
+			log.Info("PDB not found, nothing to do")
+		} else if err != nil {
+			log.Error(err, "Failed to get PDB")
+			return ctrl.Result{}, err
+		} else {
+			log.Info("Deleting PDB")
+			err = r.Delete(ctx, foundPDB)
+			if err != nil {
+				log.Error(err, "Failed to delete PDB")
 				return ctrl.Result{}, err
 			}
 		}
