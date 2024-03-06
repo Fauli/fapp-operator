@@ -375,5 +375,6 @@ func (r *FappReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&networkingv1.Ingress{}).
+		Owns(&policyv1.PodDisruptionBudget{}).
 		Complete(r)
 }

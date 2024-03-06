@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,6 +40,9 @@ type FappSpec struct {
 
 	// What port should the ingress listen on?
 	Port int32 `json:"port,omitempty"`
+
+	// What resources should be allocated to the pod?
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
 // FappStatus defines the observed state of Fapp

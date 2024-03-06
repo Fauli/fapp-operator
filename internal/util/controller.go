@@ -69,7 +69,7 @@ func createOrUpdate(ctx context.Context, c client.Client, obj client.Object, f M
 		return controllerutil.OperationResultCreated, nil
 	}
 
-	existing := obj.DeepCopyObject() //nolint
+	existing := obj.DeepCopyObject()
 	if err := mutate(f, key, obj); err != nil {
 		return controllerutil.OperationResultNone, err
 	}
@@ -120,10 +120,17 @@ func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp) error
 		appContainer = pts.Spec.Containers[0]
 	}
 
+	// Set resources for the container
+	appContainer.Resources = fapp.Spec.Resources
+
+	// Set the container name and image
 	appContainer.Name = fmt.Sprintf("%s-%s", fapp.Name, "container")
 	appContainer.Image = fapp.Spec.Image
+
+	// Set the image pull policy to always pull the image
 	appContainer.ImagePullPolicy = "Always"
 
+	// Try to be secure :D
 	appContainer.SecurityContext = &corev1.SecurityContext{
 		RunAsUser:                &[]int64{1001}[0],
 		AllowPrivilegeEscalation: &[]bool{false}[0],
@@ -133,9 +140,11 @@ func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp) error
 		},
 	}
 
+	// TODO: for nor we only support one container?
+	// Set the container ports to what is defined
 	appContainer.Ports = []corev1.ContainerPort{
 		{
-			ContainerPort: 8080,
+			ContainerPort: fapp.Spec.Port,
 			Name:          fapp.Name,
 			Protocol:      "TCP",
 		},
