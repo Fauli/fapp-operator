@@ -1,18 +1,18 @@
 apiVersion: fauli.sbebe.ch/v1alpha1
 kind: Fapp
 metadata:
-  labels:
-    app.kubernetes.io/name: fapp
-    app.kubernetes.io/instance: fapp-sample
-    app.kubernetes.io/part-of: fauli-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: fauli-operator
   name: fapp-sample
 spec:
   replicas: 2
   image: gcr.io/google-samples/hello-app:1.0
   port: 8080
   isExposed: true
+  resources:
+    limits:
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
 
   # curl --resolve "fapp.sbebe.ch:8080:$( minikube ip )" -i http://fapp.sbebe.ch

@@ -60,6 +60,9 @@ const (
 //+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=service,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking,resources=ingress,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=policy,resources=poddisruptionbudget,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -73,7 +76,7 @@ const (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	// log.Info("GOT SOMETHING")
+	log.Info("Reconciling Sloth App")
 
 	// Fetch the Fapp instance
 	fapp := &fauliv1alpha1.Fapp{}
