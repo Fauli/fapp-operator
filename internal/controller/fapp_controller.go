@@ -33,7 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	fauliv1alpha1 "github.com/fauli/fauli-operator/api/v1alpha1"
 	"github.com/fauli/fauli-operator/internal/util"
@@ -75,7 +74,9 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
 func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	// temporary removing additional information from the log
+	// log := log.FromContext(ctx)
+	log := r.Log.WithValues("fapp", req.NamespacedName)
 	log.Info("Reconciling Sloth App")
 
 	// Fetch the Fapp instance
@@ -118,7 +119,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		})
 
 		if err = r.Status().Update(ctx, fapp); err != nil {
-			log.Error(err, "Failed to update Fapp status")
+			log.Error(err, "Failed to update Fapp status with initial unknown status")
 			return ctrl.Result{}, err
 		}
 
@@ -168,6 +169,15 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 			log.Info("Performing Finalizer Operations for Sloth-App before delete.....")
 
+			// Re-fetch the fapp Custom Resource before update the status
+			// so that we have the latest state of the resource on the cluster and we will avoid
+			// raise the issue "the object has been modified, please apply
+			// your changes to the latest version and try again" which would re-trigger the reconciliation
+			if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
+				log.Error(err, "Failed to re-fetch fapp")
+				return ctrl.Result{}, err
+			}
+
 			// Let's add here an status "Downgrade" to define that this resource begin its process to be terminated.
 			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{
 				Type:    typeDegradedFapp,
@@ -176,7 +186,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				Message: fmt.Sprintf("Performing finalizer operations for the custom resource: %s ", fapp.Name)})
 
 			if err := r.Status().Update(ctx, fapp); err != nil {
-				log.Error(err, "Failed to update Fapp status")
+				log.Error(err, "Failed to update Fapp status with deletion info")
 				return ctrl.Result{}, err
 			}
 
@@ -188,21 +198,13 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			// then you need to ensure that all worked fine before deleting and updating the Downgrade status
 			// otherwise, you should requeue here.
 
-			// Re-fetch the fapp Custom Resource before update the status
-			// so that we have the latest state of the resource on the cluster and we will avoid
-			// raise the issue "the object has been modified, please apply
-			// your changes to the latest version and try again" which would re-trigger the reconciliation
-			if err := r.Get(ctx, req.NamespacedName, fapp); err != nil {
-				log.Error(err, "Failed to re-fetch fapp")
-				return ctrl.Result{}, err
-			}
 			meta.SetStatusCondition(&fapp.Status.Conditions, metav1.Condition{
 				Type:   typeDegradedFapp,
 				Status: metav1.ConditionTrue, Reason: "Finalizing",
 				Message: fmt.Sprintf("Finalizer operations for custom resource %s name were successfully accomplished", fapp.Name)})
 
 			if err := r.Status().Update(ctx, fapp); err != nil {
-				log.Error(err, "Failed to update fapp status")
+				log.Error(err, "Failed to update fapp status after deletion")
 				return ctrl.Result{}, err
 			}
 
@@ -340,7 +342,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Message: fmt.Sprintf("Deployment for custom resource (%s) with %d replicas created successfully", fapp.Name, fapp.Spec.Replicas)})
 
 	if err := r.Status().Update(ctx, fapp); err != nil {
-		log.Error(err, "Failed to update fapp status")
+		log.Error(err, "Failed to update fapp status at the end of the reconciliation")
 		return ctrl.Result{}, err
 	}
 
