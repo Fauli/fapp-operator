@@ -70,6 +70,32 @@ rules:
   - patch
   - update
 - apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fns
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fns/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fns/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - networking
   resources:
   - ingress

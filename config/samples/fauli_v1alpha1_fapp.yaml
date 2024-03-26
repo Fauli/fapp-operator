@@ -29,3 +29,6 @@ spec:
 # or minikube image load <image name>
 # or minikube image load sloth/test:latest
 # kubectl apply -f config/samples/fauli_v1alpha1_fapp.yaml
+
+# https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/
+# operator-sdk create api --group fauli --version v1alpha1 --kind Fns --resource --controller                                
