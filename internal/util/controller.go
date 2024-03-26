@@ -3,6 +3,7 @@ package util
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
@@ -127,8 +128,16 @@ func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp) error
 	appContainer.Name = fmt.Sprintf("%s-%s", fapp.Name, "container")
 	appContainer.Image = fapp.Spec.Image
 
-	// Set the image pull policy to always pull the image
+	// // Set the image pull policy to always pull the image
+	// this way we can ensure we are always using the latest image
 	appContainer.ImagePullPolicy = "Always"
+
+	// TODO: Franz
+	// THIS IS FOR DEVELOPMENT ONLY, SHOULD BE DONE BBETTER LATER
+	if value, ok := os.LookupEnv("SLOTH_OPERATOR_ENV"); ok && value == "development" {
+		appContainer.ImagePullPolicy = corev1.PullNever
+
+	}
 
 	// Try to be secure :D
 	appContainer.SecurityContext = &corev1.SecurityContext{

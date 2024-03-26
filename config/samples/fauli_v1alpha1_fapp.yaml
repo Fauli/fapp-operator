@@ -4,7 +4,8 @@ metadata:
   name: fapp-sample
 spec:
   replicas: 2
-  image: gcr.io/google-samples/hello-app:1.0
+  image: sloth/test:latest
+  # image: gcr.io/google-samples/hello-app:1.0
   port: 8080
   isExposed: true
   resources:
@@ -15,4 +16,16 @@ spec:
       memory: 128Mi
 
 
-  # curl --resolve "fapp.sbebe.ch:8080:$( minikube ip )" -i http://fapp.sbebe.ch
+  # curl --resolve "fapp-sample.sbebe.ch:8080:$( minikube ip )" -i http://fapp-sample.sbebe.ch
+  # curl --resolve "fapp-sample.sbebe.ch:80:$( minikube ip )" -i http://fapp-sample.sbebe.ch
+
+  # on mac:
+  # minikube tunnel
+  # curl --resolve "fapp-sample.sbebe.ch:80:127.0.0.1" -i http://fapp-sample.sbebe.ch
+
+
+# eval $(minikube docker-env)
+# docker build -t sloth/test:latest .
+# or minikube image load <image name>
+# or minikube image load sloth/test:latest
+# kubectl apply -f config/samples/fauli_v1alpha1_fapp.yaml
