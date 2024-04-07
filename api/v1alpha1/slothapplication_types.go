@@ -53,9 +53,12 @@ type SlothApplicationStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=slapp;sloth;sapp
+// +kubebuilder:printcolumn:JSONPath=".spec.replicas",name=Replicas,type=integer
+// +kubebuilder:printcolumn:JSONPath=".spec.image",name=image,type=string
+// +kubebuilder:printcolumn:name=age,type=date,JSONPath=`.metadata.creationTimestamp`
 // SlothApplication is the Schema for the slothapplications API
 type SlothApplication struct {
 	metav1.TypeMeta   `json:",inline"`

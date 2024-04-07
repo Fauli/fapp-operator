@@ -11,10 +11,24 @@ spec:
     kind: SlothApplication
     listKind: SlothApplicationList
     plural: slothapplications
+    shortNames:
+    - slapp
+    - sloth
+    - sapp
     singular: slothapplication
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.replicas
+      name: Replicas
+      type: integer
+    - jsonPath: .spec.image
+      name: image
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: SlothApplication is the Schema for the slothapplications API
