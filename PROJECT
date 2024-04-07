@@ -9,7 +9,7 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: sloth-operator
-repo: github.com/Fauli/sloth-operator
+repo: github.com/fauli/sloth-operator
 resources:
 - api:
     crdVersion: v1
@@ -18,6 +18,6 @@ resources:
   domain: sbebe.ch
   group: sloth
   kind: SlothApplication
-  path: github.com/Fauli/sloth-operator/api/v1alpha1
+  path: github.com/fauli/sloth-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

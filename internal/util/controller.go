@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slothv1alpha1 "github.com/Fauli/sloth-operator/api/v1alpha1"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
 )
 
 // MutateFn is a function which mutates the existing object into it's desired state.

@@ -34,8 +34,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	slothv1alpha1 "github.com/Fauli/sloth-operator/api/v1alpha1"
-	"github.com/Fauli/sloth-operator/internal/controller"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
+	"github.com/fauli/sloth-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 

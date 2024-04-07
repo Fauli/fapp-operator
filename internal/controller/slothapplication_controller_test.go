@@ -27,7 +27,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	slothv1alpha1 "github.com/Fauli/sloth-operator/api/v1alpha1"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
 )
 
 var _ = Describe("SlothApplication Controller", func() {

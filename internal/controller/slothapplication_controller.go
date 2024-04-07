@@ -34,8 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	slothv1alpha1 "github.com/Fauli/sloth-operator/api/v1alpha1"
-	"github.com/Fauli/sloth-operator/internal/util"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
+	"github.com/fauli/sloth-operator/internal/util"
 	"github.com/go-logr/logr"
 )
 

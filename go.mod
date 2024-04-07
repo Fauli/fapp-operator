@@ -1,4 +1,4 @@
-module github.com/Fauli/sloth-operator
+module github.com/fauli/sloth-operator
 
 go 1.20
 

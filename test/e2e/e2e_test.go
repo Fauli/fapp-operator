@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/Fauli/sloth-operator/test/utils"
+	"github.com/fauli/sloth-operator/test/utils"
 )
 
 const namespace = "sloth-operator-system"

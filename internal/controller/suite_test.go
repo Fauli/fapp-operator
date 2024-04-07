@@ -32,7 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	slothv1alpha1 "github.com/Fauli/sloth-operator/api/v1alpha1"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
