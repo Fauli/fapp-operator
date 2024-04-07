@@ -1,0 +1,12 @@
+apiVersion: sloth.sbebe.ch/v1alpha1
+kind: SlothApplication
+metadata:
+  labels:
+    app.kubernetes.io/name: slothapplication
+    app.kubernetes.io/instance: slothapplication-sample
+    app.kubernetes.io/part-of: sloth-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: sloth-operator
+  name: slothapplication-sample
+spec:
+  # TODO(user): Add fields here

@@ -119,3 +119,29 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - sloth.sbebe.ch
+  resources:
+  - slothapplications
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sloth.sbebe.ch
+  resources:
+  - slothapplications/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - sloth.sbebe.ch
+  resources:
+  - slothapplications/status
+  verbs:
+  - get
+  - patch
+  - update

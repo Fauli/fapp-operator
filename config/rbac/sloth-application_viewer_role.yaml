@@ -1,0 +1,27 @@
+# permissions for end users to view sloth-applications.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: sloth-application-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: sloth-operator
+    app.kubernetes.io/part-of: sloth-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: sloth-application-viewer-role
+rules:
+- apiGroups:
+  - sloth.sbebe.ch
+  resources:
+  - sloth-applications
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - sloth.sbebe.ch
+  resources:
+  - sloth-applications/status
+  verbs:
+  - get

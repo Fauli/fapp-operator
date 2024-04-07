@@ -1,0 +1,121 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - service
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fapps
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fapps/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fapps/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fns
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fns/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - fauli.sbebe.ch
+  resources:
+  - fns/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - networking
+  resources:
+  - ingress
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudget
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
