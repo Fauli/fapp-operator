@@ -1,5 +1,4 @@
 ## Append samples of your project ##
 resources:
-- sloth_v1alpha1_sloth-application.yaml
 - sloth_v1alpha1_slothapplication.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
