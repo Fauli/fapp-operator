@@ -8,25 +8,16 @@ layout:
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
-projectName: fauli-operator
-repo: github.com/fauli/fauli-operator
+projectName: sloth-operator
+repo: github.com/fauli/sloth-operator
 resources:
 - api:
     crdVersion: v1
     namespaced: true
   controller: true
   domain: sbebe.ch
-  group: fauli
-  kind: Fapp
-  path: github.com/fauli/fauli-operator/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: sbebe.ch
-  group: fauli
-  kind: Fns
-  path: github.com/fauli/fauli-operator/api/v1alpha1
+  group: sloth
+  kind: SlothApplication
+  path: github.com/fauli/sloth-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

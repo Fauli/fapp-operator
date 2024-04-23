@@ -1,5 +1,4 @@
 ## Append samples of your project ##
 resources:
-- fauli_v1alpha1_fapp.yaml
-- fauli_v1alpha1_fns.yaml
+- sloth_v1alpha1_slothapplication.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

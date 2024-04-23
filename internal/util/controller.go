@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	fauliv1alpha1 "github.com/fauli/fauli-operator/api/v1alpha1"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
 )
 
 // MutateFn is a function which mutates the existing object into it's desired state.
@@ -95,7 +95,7 @@ func mutate(f MutateFn, key client.ObjectKey, obj client.Object) error {
 	return nil
 }
 
-func DeploymentForFapp(deploy *appsv1.Deployment, fapp *fauliv1alpha1.Fapp) {
+func DeploymentForFapp(deploy *appsv1.Deployment, fapp *slothv1alpha1.SlothApplication) {
 
 	labels := labelsForFapp(fapp.Name)
 	// // print all labels
@@ -110,7 +110,7 @@ func DeploymentForFapp(deploy *appsv1.Deployment, fapp *fauliv1alpha1.Fapp) {
 	deploy.Spec.Replicas = &fapp.Spec.Replicas
 }
 
-func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp) error {
+func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *slothv1alpha1.SlothApplication) error {
 
 	var appContainer corev1.Container
 	pts.ObjectMeta.Labels = labelsForFapp(fapp.Name)
@@ -163,7 +163,7 @@ func PodSpecForFapp(pts *corev1.PodTemplateSpec, fapp *fauliv1alpha1.Fapp) error
 
 }
 
-func ServiceForFapp(svc *corev1.Service, fapp *fauliv1alpha1.Fapp) error {
+func ServiceForFapp(svc *corev1.Service, fapp *slothv1alpha1.SlothApplication) error {
 	labels := labelsForFapp(fapp.Name)
 	svc.ObjectMeta.Labels = labels
 	svc.Spec.Selector = labels
@@ -178,7 +178,7 @@ func ServiceForFapp(svc *corev1.Service, fapp *fauliv1alpha1.Fapp) error {
 	return nil
 }
 
-func IngressForFapp(ing *networkingv1.Ingress, fapp *fauliv1alpha1.Fapp) error {
+func IngressForFapp(ing *networkingv1.Ingress, fapp *slothv1alpha1.SlothApplication) error {
 	labels := labelsForFapp(fapp.Name)
 	ing.ObjectMeta.Labels = labels
 	ing.Spec.Rules = []networkingv1.IngressRule{
@@ -210,11 +210,11 @@ func IngressForFapp(ing *networkingv1.Ingress, fapp *fauliv1alpha1.Fapp) error {
 	return nil
 }
 
-func getHostname(fapp *fauliv1alpha1.Fapp) string {
+func getHostname(fapp *slothv1alpha1.SlothApplication) string {
 	return fmt.Sprintf("%s.%s", fapp.Name, "sbebe.ch")
 }
 
-func PodDisruptionBudgetForFapp(pdb *policyv1.PodDisruptionBudget, fapp *fauliv1alpha1.Fapp) error {
+func PodDisruptionBudgetForFapp(pdb *policyv1.PodDisruptionBudget, fapp *slothv1alpha1.SlothApplication) error {
 
 	labels := labelsForFapp(fapp.Name)
 

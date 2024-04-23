@@ -24,8 +24,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// FappSpec defines the desired state of Fapp
-type FappSpec struct {
+// SlothApplicationSpec defines the desired state of SlothApplication
+type SlothApplicationSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
@@ -45,35 +45,38 @@ type FappSpec struct {
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 }
 
-// FappStatus defines the observed state of Fapp
-type FappStatus struct {
+// SlothApplicationStatus defines the observed state of SlothApplication
+type SlothApplicationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
-// Fapp is the Schema for the fapps API
-type Fapp struct {
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=slapp;sloth;sapp
+// +kubebuilder:printcolumn:JSONPath=".spec.replicas",name=Replicas,type=integer
+// +kubebuilder:printcolumn:JSONPath=".spec.image",name=image,type=string
+// +kubebuilder:printcolumn:name=age,type=date,JSONPath=`.metadata.creationTimestamp`
+// SlothApplication is the Schema for the slothapplications API
+type SlothApplication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   FappSpec   `json:"spec,omitempty"`
-	Status FappStatus `json:"status,omitempty"`
+	Spec   SlothApplicationSpec   `json:"spec,omitempty"`
+	Status SlothApplicationStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// FappList contains a list of Fapp
-type FappList struct {
+// SlothApplicationList contains a list of SlothApplication
+type SlothApplicationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Fapp `json:"items"`
+	Items           []SlothApplication `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Fapp{}, &FappList{})
+	SchemeBuilder.Register(&SlothApplication{}, &SlothApplicationList{})
 }

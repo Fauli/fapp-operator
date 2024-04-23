@@ -27,10 +27,10 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	fauliv1alpha1 "github.com/fauli/fauli-operator/api/v1alpha1"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
 )
 
-var _ = Describe("Fns Controller", func() {
+var _ = Describe("SlothApplication Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -40,13 +40,13 @@ var _ = Describe("Fns Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		fns := &fauliv1alpha1.Fns{}
+		slothapplication := &slothv1alpha1.SlothApplication{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Fns")
-			err := k8sClient.Get(ctx, typeNamespacedName, fns)
+			By("creating the custom resource for the Kind SlothApplication")
+			err := k8sClient.Get(ctx, typeNamespacedName, slothapplication)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &fauliv1alpha1.Fns{
+				resource := &slothv1alpha1.SlothApplication{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,16 +59,16 @@ var _ = Describe("Fns Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &fauliv1alpha1.Fns{}
+			resource := &slothv1alpha1.SlothApplication{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance Fns")
+			By("Cleanup the specific resource instance SlothApplication")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &FnsReconciler{
+			controllerReconciler := &SlothApplicationReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}

@@ -1,20 +1,20 @@
-# permissions for end users to edit fns.
+# permissions for end users to edit slothapplications.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   labels:
     app.kubernetes.io/name: clusterrole
-    app.kubernetes.io/instance: fns-editor-role
+    app.kubernetes.io/instance: slothapplication-editor-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: fauli-operator
-    app.kubernetes.io/part-of: fauli-operator
+    app.kubernetes.io/created-by: sloth-operator
+    app.kubernetes.io/part-of: sloth-operator
     app.kubernetes.io/managed-by: kustomize
-  name: fns-editor-role
+  name: slothapplication-editor-role
 rules:
 - apiGroups:
-  - fauli.sbebe.ch
+  - sloth.sbebe.ch
   resources:
-  - fns
+  - slothapplications
   verbs:
   - create
   - delete
@@ -24,8 +24,8 @@ rules:
   - update
   - watch
 - apiGroups:
-  - fauli.sbebe.ch
+  - sloth.sbebe.ch
   resources:
-  - fns/status
+  - slothapplications/status
   verbs:
   - get

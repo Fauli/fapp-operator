@@ -1,11 +1,10 @@
-apiVersion: fauli.sbebe.ch/v1alpha1
-kind: Fapp
+apiVersion: sloth.sbebe.ch/v1alpha1
+kind: SlothApplication
 metadata:
-  name: fapp-sample
+  name: slapp-sample
 spec:
   replicas: 2
   image: sloth/test:latest
-  # image: gcr.io/google-samples/hello-app:1.0
   port: 8080
   isExposed: true
   resources:
@@ -22,6 +21,7 @@ spec:
   # on mac:
   # minikube tunnel
   # curl --resolve "fapp-sample.sbebe.ch:80:127.0.0.1" -i http://fapp-sample.sbebe.ch
+  # curl --resolve "slapp-sample.sbebe.ch:80:127.0.0.1" -i http://slapp-sample.sbebe.ch
 
 
 # eval $(minikube docker-env)

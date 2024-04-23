@@ -34,13 +34,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	fauliv1alpha1 "github.com/fauli/fauli-operator/api/v1alpha1"
-	"github.com/fauli/fauli-operator/internal/util"
+	slothv1alpha1 "github.com/fauli/sloth-operator/api/v1alpha1"
+	"github.com/fauli/sloth-operator/internal/util"
 	"github.com/go-logr/logr"
 )
 
-// FappReconciler reconciles a Fapp object
-type FappReconciler struct {
+// SlothApplicationReconciler reconciles a SlothApplication object
+type SlothApplicationReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Log      logr.Logger
@@ -48,15 +48,15 @@ type FappReconciler struct {
 }
 
 const (
-	fappFinalizer = "fapp.sbebe.ch/finalizer"
+	slothFinalizer = "sloth.sbebe.ch/finalizer"
 
 	typeAvailableFapp = "Available"
 	typeDegradedFapp  = "Degraded"
 )
 
-//+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=fauli.sbebe.ch,resources=fapps/finalizers,verbs=update
+//+kubebuilder:rbac:groups=sloth.sbebe.ch,resources=slothapplications,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=sloth.sbebe.ch,resources=slothapplications/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=sloth.sbebe.ch,resources=slothapplications/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=service,verbs=get;list;watch;create;update;patch;delete
@@ -67,20 +67,20 @@ const (
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the Fapp object against the actual cluster state, and then
+// the SlothApplication object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
-func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
+func (r *SlothApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	// temporary removing additional information from the log
 	// log := log.FromContext(ctx)
 	log := r.Log.WithValues("fapp", req.NamespacedName)
 	log.Info("Reconciling Sloth App")
 
 	// Fetch the Fapp instance
-	fapp := &fauliv1alpha1.Fapp{}
+	fapp := &slothv1alpha1.SlothApplication{}
 	err := r.Get(ctx, req.NamespacedName, fapp)
 
 	if err != nil {
@@ -138,7 +138,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// Let's add a finalizer. Then, we can define some operations which should
 	// occurs before the custom resource to be deleted.
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/finalizers
-	if !controllerutil.ContainsFinalizer(fapp, fappFinalizer) {
+	if !controllerutil.ContainsFinalizer(fapp, slothFinalizer) {
 		// Let's re-fetch the fapp Custom Resource after update the status
 		// so that we have the latest state of the resource on the cluster and we will avoid
 		// raise the issue "the object has been modified, please apply
@@ -149,7 +149,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 		log.Info("Adding Finalizer for our Fapp")
-		if ok := controllerutil.AddFinalizer(fapp, fappFinalizer); !ok {
+		if ok := controllerutil.AddFinalizer(fapp, slothFinalizer); !ok {
 			log.Error(err, "Failed to add finalizer into the custom resource")
 			return ctrl.Result{Requeue: true}, nil
 		}
@@ -164,7 +164,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	// indicated by the deletion timestamp being set.
 	isFappMarkedToBeDeleted := fapp.GetDeletionTimestamp() != nil
 	if isFappMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(fapp, fappFinalizer) {
+		if controllerutil.ContainsFinalizer(fapp, slothFinalizer) {
 			log.Info("DELETE THE FAPP!")
 
 			log.Info("Performing Finalizer Operations for Sloth-App before delete.....")
@@ -209,7 +209,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 
 			log.Info("Removing Finalizer for fapp after successfully perform the operations")
-			if ok := controllerutil.RemoveFinalizer(fapp, fappFinalizer); !ok {
+			if ok := controllerutil.RemoveFinalizer(fapp, slothFinalizer); !ok {
 				log.Error(err, "Failed to remove finalizer for fapp")
 				return ctrl.Result{Requeue: true}, nil
 			}
@@ -354,7 +354,7 @@ func (r *FappReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return ctrl.Result{}, nil
 }
 
-func (r *FappReconciler) doFinalizerOperationsForFapp(fapp *fauliv1alpha1.Fapp) {
+func (r *SlothApplicationReconciler) doFinalizerOperationsForFapp(fapp *slothv1alpha1.SlothApplication) {
 	// TODO(user): Add the cleanup steps that the operator
 	// needs to do before the CR can be deleted. Examples
 	// of finalizers include performing backups and deleting
@@ -374,9 +374,9 @@ func (r *FappReconciler) doFinalizerOperationsForFapp(fapp *fauliv1alpha1.Fapp) 
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *FappReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *SlothApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&fauliv1alpha1.Fapp{}).
+		For(&slothv1alpha1.SlothApplication{}).
 		Owns(&appsv1.Deployment{}).
 		Owns(&corev1.Service{}).
 		Owns(&networkingv1.Ingress{}).

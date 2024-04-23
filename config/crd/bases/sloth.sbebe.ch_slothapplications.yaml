@@ -3,21 +3,35 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.12.0
-  name: fapps.fauli.sbebe.ch
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: slothapplications.sloth.sbebe.ch
 spec:
-  group: fauli.sbebe.ch
+  group: sloth.sbebe.ch
   names:
-    kind: Fapp
-    listKind: FappList
-    plural: fapps
-    singular: fapp
+    kind: SlothApplication
+    listKind: SlothApplicationList
+    plural: slothapplications
+    shortNames:
+    - slapp
+    - sloth
+    - sapp
+    singular: slothapplication
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.replicas
+      name: Replicas
+      type: integer
+    - jsonPath: .spec.image
+      name: image
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Fapp is the Schema for the fapps API
+        description: SlothApplication is the Schema for the slothapplications API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,7 +46,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: FappSpec defines the desired state of Fapp
+            description: SlothApplicationSpec defines the desired state of SlothApplication
             properties:
               image:
                 description: What image should be deployed
@@ -100,7 +114,7 @@ spec:
             - image
             type: object
           status:
-            description: FappStatus defines the observed state of Fapp
+            description: SlothApplicationStatus defines the observed state of SlothApplication
             properties:
               conditions:
                 items:
